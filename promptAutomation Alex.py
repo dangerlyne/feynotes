@@ -24,7 +24,7 @@ def primary (URL, apiKeyGlobal, userTopic):  #This is the first function for wor
     promptTail = f"""
 ---
 Please summarize the video transcript on {userTopic} provided above.
-Identify the topics introduced in the video. Also, identify the essence of the key concepts, details, the significance, and the role in nature/world of the topics being discussed.
+Identify the topics introduced in the video. Also, identify the essence of the key concepts the lecturer talks about, how it works, the significance, and the role in nature/world of the topics being discussed.
 ---
 """
 
@@ -36,11 +36,11 @@ Identify the topics introduced in the video. Also, identify the essence of the k
     
 def checkAnswers(apiKeyGlobal, summary, useranswer1, useranswer2, useranswer3): #This is the second function used once the user has recorded their responses to the three questions
     #Example uage: checkAnswers("aeiou", "The video can be summarized as follows...", "My answer to the first question", "My answer to the second question", "My answer to the third question")
-    userUnderstanding = f"""**1. Understanding**
+    userUnderstanding = f"""**1. Please talk about what today's topic was all about in brief**
     {useranswer1}
-**2. Explanation**
+**2. How does it work? Please include technicalities!**
     {useranswer2}
-**3. Significance**
+**3. How is it significant?**
     {useranswer3}
 """
 
@@ -50,8 +50,8 @@ The user's understanding of the topic can be understood by the following explana
 {userUnderstanding}
 Now compare this response to the ideal summary:
 {summary}
-If the user's transcription is missing out any core essence of the key concepts, details, the significance, and the role in nature/world of the topics being discussed with respect to the other, briefly mention that in the form of a feedback.
-While providing the feedback, start off with 'Feedback:'
+If the user's transcription is missing out any core essence of the lecturer's talk, significance, and technicalities when comparing it with the ideal summary, please mention it in the feedback as to what they missed out.
+While providing the feedback... keep it under 4 sentences, ratw their each sub-answer of the three questions on a scale of 1 to 5, start off with 'Feedback:'
 """
 
     genai.configure(api_key = apiKeyGlobal)
@@ -72,7 +72,7 @@ While providing the feedback, start off with 'Feedback:'
 #Test Framework
 #def main():
 #    video_summary = primary("https://www.youtube.com/watch?v=BY5qBsmWEa8", "APIKEY", "Cryptographic Hashing")
-#    #print(video_summary)
+    #print(video_summary)
 #    urs1 = "Cryptographic hashing is a technique used to turn a given input into a fixed length value. The message can be either shorter or longer than the hash, but all inputs will produce the same length hash value. This makes it possible to demonstrate knowledge of the input without disclosing its true value."
 #    urs2 = "In order to produce a hash from an input, an algorith like SHA-256 is used to perform a series of mathematical operations on it. Important properties for these hashing are that it should be extremely difficult to trace a hash back to its input, and that small changes in the content should still cause significant changes in the hash value."
 #    urs3 = "Like I described before, hashing is useful for different things in cybersecurity. For passwords, due to the asymmetric relationship between the password and its hash, the hash can be saved or leaked without revealing the original password used."
