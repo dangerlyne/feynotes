@@ -7,46 +7,36 @@
     <style>
         body {
             font-family: Arial, sans-serif;
-            margin: 0;
-            padding: 0;
-            background-color: #f4f4f4;
             display: flex;
             align-items: center;
             justify-content: center;
             min-height: 100vh;
+            margin: 0;
+            padding: 0;
+            background-color: #f4f4f4;
         }
         .container {
             padding: 30px;
+            background-color: white;
             border: 1px solid #ccc;
             border-radius: 5px;
-            background-color: white;
             box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
-            max-width: 450px;
-            width: 100%;
             text-align: center;
+            max-width: 450px;
         }
-        input[type="text"] {
-            width: 80%;
+        input[type="text"], button {
             padding: 10px;
+            border-radius: 5px;
             margin: 10px 0;
             border: 1px solid #ccc;
-            border-radius: 5px;
         }
         button {
-            padding: 10px 20px;
             background-color: #4CAF50;
             color: white;
-            border: none;
-            border-radius: 5px;
             cursor: pointer;
-            margin-bottom: 10px;
         }
         button:hover {
             background-color: #45a049;
-        }
-        #result, #questionsSection {
-            margin-top: 20px;
-            text-align: left;
         }
         #videoSection {
             display: none;
@@ -57,45 +47,36 @@
             max-width: 400px;
             border: 1px solid #ccc;
             border-radius: 5px;
-            margin-bottom: 10px;
         }
         #transcript {
             margin-top: 20px;
-            text-align: left;
-            max-width: 600px;
+            padding: 10px;
             border: 1px solid #ccc;
             border-radius: 5px;
-            padding: 10px;
-            background-color: white;
-            white-space: pre-wrap;
+            background-color: #f9f9f9;
         }
     </style>
 </head>
 <body>
     <div class="container">
         <h1>YouTube Transcript Fetcher</h1>
-        <p>Enter a YouTube video link below:</p>
         <input type="text" id="youtubeLink" placeholder="Enter YouTube Link here">
         <button onclick="fetchTranscript()">Get Transcript</button>
         <div id="result"></div>
 
-        <!-- Questions Section -->
+        <!-- Question and Video Section -->
         <div id="questionsSection" style="display:none;">
             <h3 id="questionText"></h3>
+            <button id="nextButton" onclick="nextQuestion()" style="display: none;">Next Question</button>
         </div>
-
-        <!-- Hidden video recorder section -->
         <div id="videoSection">
             <h1>Answer Recording</h1>
             <video id="preview" autoplay muted></video>
-            <br>
             <button id="startButton">Start Recording</button>
             <button id="stopButton" disabled>Stop Recording</button>
             <br>
-            <!--- <video id="recordedVideo" controls></video> -->
-            <br>
+            <video id="recordedVideo" controls></video>
             <a id="downloadLink" style="display: none;">Download Video</a>
-            <button id="saveTranscriptButton" style="display: none;">Save Transcript</button>
             <h2>Transcript:</h2>
             <div id="transcript"></div>
         </div>
@@ -108,20 +89,23 @@
             "Question 2: Can you explain the key points?",
             "Question 3: How would you apply the concepts discussed in the video?"
         ];
+        let mediaRecorder;
+        let recordedChunks = [];
+        let recognition;
+        let transcriptText = "";
+        let transcriptStorage = []; // Variable to store transcripts for each question
 
-        function fetchTranscript() {
+        async function fetchTranscript() {
             const link = document.getElementById('youtubeLink').value;
-            const videoId = new URL(link).searchParams.get("v"); // Extract video ID
-
+            const videoId = new URL(link).searchParams.get("v");
             if (videoId) {
-                document.getElementById('result').innerHTML = `Fetching transcript for video ID: ${videoId}...`;
-
+                document.getElementById('result').innerText = `Fetching transcript for video ID: ${videoId}...`;
                 setTimeout(() => {
                     document.getElementById('result').innerHTML = `<h3>Transcript fetched successfully!</h3>`;
                     showQuestion();
-                }, 2000); // 2 seconds delay for simulation
+                }, 2000);
             } else {
-                document.getElementById('result').innerHTML = 'Please enter a valid YouTube link.';
+                document.getElementById('result').innerText = 'Please enter a valid YouTube link.';
             }
         }
 
@@ -130,129 +114,94 @@
                 document.getElementById('questionsSection').style.display = 'block';
                 document.getElementById('questionText').innerText = questions[currentQuestionIndex];
                 document.getElementById('videoSection').style.display = 'block';
-                startVideoRecorder();
+                document.getElementById('nextButton').style.display = 'none';
+                resetRecorder();
+                initializeRecorder();
             }
         }
 
-        // Video Recorder and Speech Recognition functionality
-        let mediaRecorder;
-        let recordedChunks = [];
-        let recognition;
-        let transcriptText = "";
-
-        function startVideoRecorder() {
-            navigator.mediaDevices.getUserMedia({ video: false, audio: true })
-                .then(stream => {
-                    const preview = document.getElementById('preview');
-                    preview.srcObject = stream;
-
-                    mediaRecorder = new MediaRecorder(stream);
-                    mediaRecorder.ondataavailable = handleDataAvailable;
-                    mediaRecorder.onstop = handleStop;
-
-                    initializeSpeechRecognition();
-
-                    document.getElementById('startButton').addEventListener('click', startRecording);
-                    document.getElementById('stopButton').addEventListener('click', stopRecording);
-                    document.getElementById('saveTranscriptButton').addEventListener('click', saveTranscriptToFile);
-                })
-                .catch(error => {
-                    console.error("Error accessing media devices.", error);
-                });
-        }
-
-        function initializeSpeechRecognition() {
-            recognition = new (window.SpeechRecognition || window.webkitSpeechRecognition)();
-            recognition.interimResults = true;
-
-            recognition.onresult = (event) => {
-                const currentTranscript = Array.from(event.results)
-                    .map(result => result[0].transcript)
-                    .join('');
-
-                if (event.results[event.results.length - 1].isFinal) {
-                    transcriptText += currentTranscript + "\n\n";
-                    document.getElementById('transcript').innerText = transcriptText;
-                } else {
-                    document.getElementById('transcript').innerText = transcriptText + currentTranscript;
-                }
-            };
-
-            recognition.onend = () => {
-                console.log("Speech recognition ended.");
-            };
-        }
-
-        function startRecording() {
-            recordedChunks = [];
-            mediaRecorder.start();
-            recognition.start();
-            document.getElementById('startButton').disabled = true;
-            document.getElementById('stopButton').disabled = false;
-        }
-
-        function stopRecording() {
-            mediaRecorder.stop();
-            recognition.stop();
-            document.getElementById('startButton').disabled = false;
-            document.getElementById('stopButton').disabled = true;
-            document.getElementById('saveTranscriptButton').style.display = 'inline-block';
-
-            // Move to the next question
+        function nextQuestion() {
             currentQuestionIndex++;
             if (currentQuestionIndex < questions.length) {
-                showQuestion(); // Show the next question
+                showQuestion();
             } else {
                 document.getElementById('questionsSection').innerHTML = "<h3>All questions answered.</h3>";
             }
         }
 
-        function handleDataAvailable(event) {
-            if (event.data.size > 0) {
-                recordedChunks.push(event.data);
+        function resetRecorder() {
+            if (mediaRecorder && mediaRecorder.state !== 'inactive') {
+                mediaRecorder.stop();
             }
+            if (recognition) recognition.stop();
+            document.getElementById('recordedVideo').src = "";
+            document.getElementById('transcript').innerText = "";
+            recordedChunks = [];
+            transcriptText = "";
         }
 
-        function handleStop() {
-            const blob = new Blob(recordedChunks, { type: 'video/webm' });
-            const videoURL = URL.createObjectURL(blob);
-            const recordedVideo = document.getElementById('recordedVideo');
-            recordedVideo.src = videoURL;
-
-            const downloadLink = document.getElementById('downloadLink');
-            downloadLink.href = videoURL;
-            downloadLink.download = 'recorded-video.webm';
-            downloadLink.style.display = 'block';
-            downloadLink.textContent = 'Download Video';
-        }
-
-        async function saveTranscriptToFile() {
+        async function initializeRecorder() {
             try {
-                if ('showSaveFilePicker' in window) {
-                    const fileHandle = await window.showSaveFilePicker({
-                        suggestedName: 'transcript.txt',
-                        types: [{
-                            description: 'Text Files',
-                            accept: { 'text/plain': ['.txt'] }
-                        }]
-                    });
+                const stream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
+                document.getElementById('preview').srcObject = stream;
 
-                    const writableStream = await fileHandle.createWritable();
-                    await writableStream.write(transcriptText);
-                    await writableStream.close();
-                    console.log('Transcript saved successfully!');
-                } else {
-                    const blob = new Blob([transcriptText], { type: 'text/plain' });
-                    const link = document.createElement('a');
-                    link.href = URL.createObjectURL(blob);
-                    link.download = 'transcript.txt';
-                    document.body.appendChild(link);
-                    link.click();
-                    document.body.removeChild(link);
-                }
+                mediaRecorder = new MediaRecorder(stream);
+                mediaRecorder.ondataavailable = (event) => {
+                    if (event.data.size > 0) recordedChunks.push(event.data);
+                };
+                mediaRecorder.onstop = () => {
+                    const blob = new Blob(recordedChunks, { type: 'video/webm' });
+                    const videoURL = URL.createObjectURL(blob);
+                    document.getElementById('recordedVideo').src = videoURL;
+                    document.getElementById('downloadLink').href = videoURL;
+                    document.getElementById('downloadLink').download = 'recorded-video.webm';
+                    document.getElementById('downloadLink').style.display = 'block';
+                };
+                initializeSpeechRecognition();
             } catch (error) {
-                console.error('Error saving transcript:', error);
+                console.error("Error accessing media devices:", error);
             }
+        }
+
+        function initializeSpeechRecognition() {
+            recognition = new (window.SpeechRecognition || window.webkitSpeechRecognition)();
+            recognition.interimResults = true;
+            recognition.onresult = (event) => {
+                const interimTranscript = Array.from(event.results)
+                    .map(result => result[0].transcript)
+                    .join('');
+                if (event.results[event.results.length - 1].isFinal) {
+                    transcriptText += interimTranscript + "\n\n";
+                    document.getElementById('transcript').innerText = transcriptText;
+                } else {
+                    document.getElementById('transcript').innerText = transcriptText + interimTranscript;
+                }
+            };
+        }
+
+        document.getElementById('startButton').addEventListener('click', () => {
+            recordedChunks = [];
+            mediaRecorder.start();
+            recognition.start();
+            document.getElementById('startButton').disabled = true;
+            document.getElementById('stopButton').disabled = false;
+        });
+
+        document.getElementById('stopButton').addEventListener('click', () => {
+            mediaRecorder.stop();
+            recognition.stop();
+            saveTranscriptToVariable(); // Save the transcript to the variable
+            document.getElementById('startButton').disabled = false;
+            document.getElementById('stopButton').disabled = true;
+            document.getElementById('nextButton').style.display = 'inline-block';
+        });
+
+        function saveTranscriptToVariable() {
+            transcriptStorage.push({
+                question: questions[currentQuestionIndex],
+                transcript: transcriptText
+            });
+            console.log("Transcript saved to variable:", transcriptStorage); // For debugging
         }
     </script>
 </body>
